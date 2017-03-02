@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import random
+import pickle
 import tensorflow as tf
 
 from datatypes import Configuration, TransitionVector
@@ -22,13 +23,28 @@ n_l = 12
 
 class Model:
 
-    def __init__(self, d, depth, vocab, tags, relations, activation="cubed",
-                 batch_size=64, l2_weight=1e-8, learning_rate=0.01):
+    def __init__(self, d, depth, vocab, tags, relations, session,
+                 activation="cubed", batch_size=64, l2_weight=1e-8,
+                 learning_rate=0.01):
 
         self.vocab = vocab
         self.tags = tags
         self.relations = relations
         self.batch_size = batch_size
+        self.sess = session
+
+        # this is used for conveniently saving the parameters
+        self._params = {
+            "d": d,
+            "depth": depth,
+            "vocab": vocab,
+            "tags": tags,
+            "relations": relations,
+            "activation": activation,
+            "batch_size": batch_size,
+            "l2_weight": l2_weight,
+            "learning_rate": learning_rate,
+        }
 
         self.transition_vector = TransitionVector(relations)
         num_transitions = len(self.transition_vector)
@@ -114,6 +130,8 @@ class Model:
         predicted_correctly = tf.equal(tf.argmax(p, 1), tf.argmax(trans_embed, 1))
         self.accuracy = tf.reduce_mean(tf.cast(predicted_correctly, tf.float32))
 
+        self._saver = tf.train.Saver()
+
     def _to_batches(self, examples):
         all_input_words = []
         all_input_tags = []
@@ -141,7 +159,7 @@ class Model:
 
         return f
 
-    def train(self, trees, session, epochs=1000, dropout_keep_prob=0.5):
+    def train(self, trees, epochs=1000, dropout_keep_prob=0.5):
         examples = []
 
         for i, tree_ in enumerate(trees):
@@ -163,17 +181,17 @@ class Model:
                 self.dropout_keep_prob: dropout_keep_prob,
             }
 
-            session.run(self.optimizer, feed_dict=feed_dict)
+            self.sess.run(self.optimizer, feed_dict=feed_dict)
 
             if epoch % 100 == 0:
-                train_accuracy = session.run(self.accuracy, feed_dict=feed_dict)
+                train_accuracy = self.sess.run(self.accuracy, feed_dict=feed_dict)
                 print('epoch {0}, training accuracy {1}'.format(epoch, train_accuracy))
 
-    def parse(self, sentences, output, session):
+    def parse(self, sentences, output):
         all_arcs = []
         for i, sentence in enumerate(sentences):
             print("Parsing", i, len(sentences))
-            all_arcs.append(self.parse_sentence(sentence, session))
+            all_arcs.append(self.parse_sentence(sentence))
 
         with open(output, 'w') as f:
             for i, sent_arcs in enumerate(all_arcs):
@@ -186,7 +204,7 @@ class Model:
                         f.write('\n')
                 f.write('\n')
 
-    def parse_sentence(self, sentence, session):
+    def parse_sentence(self, sentence):
         config = Configuration(self, sentence)
 
         while not config.finished:
@@ -199,8 +217,8 @@ class Model:
                 self.dropout_keep_prob: 1.0,
             }
 
-            transitions = session.run(self.predicted_transitions,
-                                      feed_dict=feed_dict)
+            transitions = self.sess.run(self.predicted_transitions,
+                                        feed_dict=feed_dict)
 
             named_transitions = []
 
@@ -224,3 +242,21 @@ class Model:
                 config.left_arc(best_label)
 
         return config.tree.arcs
+
+    def save_to(self, output):
+        self._saver.save(self.sess, output)
+
+        with open(output + '.params', 'wb') as f:
+            pickle.dump(self._params, f)
+
+    @classmethod
+    def load_from(cls, model, session):
+        with open(model + '.params', 'rb') as f:
+            params = pickle.load(f)
+
+        params["session"] = session
+
+        m = cls(**params)
+        m._saver.restore(session, model)
+
+        return m

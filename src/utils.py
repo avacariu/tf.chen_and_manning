@@ -111,3 +111,8 @@ def normalize(word, regex=re.compile(r"[0-9]+|[0-9]+\.[0-9]+|[0-9]+[0-9,]+")):
         return '*NUM*'
 
     return word.lower()
+
+
+def return1():
+    """A alternative for `lambda: 1` useful for pickling defaultdicts"""
+    return 1
