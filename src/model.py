@@ -24,13 +24,12 @@ n_l = 12
 class Model:
 
     def __init__(self, d, depth, vocab, tags, relations, session,
-                 activation="cubed", batch_size=64, l2_weight=1e-8,
+                 activation="cubed", l2_weight=1e-8,
                  learning_rate=0.01):
 
         self.vocab = vocab
         self.tags = tags
         self.relations = relations
-        self.batch_size = batch_size
         self.sess = session
 
         # this is used for conveniently saving the parameters
@@ -41,7 +40,6 @@ class Model:
             "tags": tags,
             "relations": relations,
             "activation": activation,
-            "batch_size": batch_size,
             "l2_weight": l2_weight,
             "learning_rate": learning_rate,
         }
@@ -112,7 +110,7 @@ class Model:
                             tf.reduce_sum(
                                 tf.nn.softmax_cross_entropy_with_logits(
                                     labels=trans_embed, logits=p)),
-                            self.batch_size)
+                            tf.to_float(tf.shape(self.input_words)[0]))
 
         regularized_params = list(map(tf.nn.l2_loss,
                                       [self.W_w, self.W_t, self.W_l, self.W2,
@@ -149,17 +147,17 @@ class Model:
 
             all_expected_outputs.append(gold_transition)
 
-        def f():
-            i = random.randrange(0, max(len(examples) - self.batch_size, 1))
+        def f(batch_size):
+            i = random.randrange(0, max(len(examples) - batch_size, 1))
 
-            return (all_input_words[i:i + self.batch_size],
-                    all_input_tags[i:i + self.batch_size],
-                    all_input_labels[i:i + self.batch_size],
-                    all_expected_outputs[i:i + self.batch_size])
+            return (all_input_words[i:i + batch_size],
+                    all_input_tags[i:i + batch_size],
+                    all_input_labels[i:i + batch_size],
+                    all_expected_outputs[i:i + batch_size])
 
         return f
 
-    def train(self, trees, epochs=1000, dropout_keep_prob=0.5):
+    def train(self, trees, batch_size=64, epochs=1000, dropout_keep_prob=0.5):
         examples = []
 
         for i, tree_ in enumerate(trees):
@@ -171,7 +169,7 @@ class Model:
         batcher = self._to_batches(examples)
 
         for epoch in range(epochs):
-            batch = batcher()
+            batch = batcher(batch_size)
 
             feed_dict = {
                 self.input_words: batch[0],

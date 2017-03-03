@@ -29,14 +29,13 @@ def train(args):
         m = model.Model(args.embedding_size, args.hidden_layer_size, vocab,
                         tags, relations, session,
                         activation=args.activation,
-                        batch_size=args.batch_size,
                         l2_weight=args.l2,
                         learning_rate=args.learning_rate)
 
         init = tf.global_variables_initializer()
         session.run(init)
 
-        m.train(trees, epochs=args.epochs,
+        m.train(trees, batch_size=args.batch_size, epochs=args.epochs,
                 dropout_keep_prob=args.dropout_keep_prob)
 
         m.save_to(args.save_to)
