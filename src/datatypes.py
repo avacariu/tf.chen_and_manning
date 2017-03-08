@@ -312,6 +312,19 @@ class TransitionVector:
         self.relations = relations
         self.labels = {i: Label(i, rel) for rel, i in self.relations.items()}
 
+        self.actions = []
+        for i in range(2*len(relations)):
+            if i == 0:
+                item = (None, Label(0, "*PAD*"))
+            elif i < len(self.relations):
+                item = ("left", self.labels[i])
+            elif i < 2 * len(self.relations) - 1:
+                item = ("right", self.labels[i - len(self.relations) + 1])
+            else:
+                item = ("shift", None)
+
+            self.actions.append(item)
+
     def index_of(self, action):
         """
         Returns an index that can be used to create a onehot vector.
@@ -338,18 +351,7 @@ class TransitionVector:
         Returns (direction, label), where direction is None for the padding
         """
 
-        item = None
-
-        if idx == 0:
-            item = (None, Label(0, "*PAD*"))
-        elif idx < len(self.relations):
-            item = ("left", self.labels[idx])
-        elif idx < 2 * len(self.relations) - 1:
-            item = ("right", self.labels[idx - len(self.relations) + 1])
-        else:
-            item = ("shift", None)
-
-        return item
+        return self.actions[idx]
 
     def __len__(self):
         return 2*len(self.relations)
