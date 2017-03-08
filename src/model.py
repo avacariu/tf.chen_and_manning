@@ -218,14 +218,11 @@ class Model:
             transitions = self.sess.run(self.predicted_transitions,
                                         feed_dict=feed_dict)
 
-            named_transitions = []
+            def named_transitions():
+                for transition in transitions.indices.squeeze(0):
+                    yield self.transition_vector[transition]
 
-            for transition in transitions.indices.squeeze(0):
-                action = self.transition_vector[transition]
-
-                named_transitions.append(action)
-
-            feasible_transitions = filter(config.can_apply, named_transitions)
+            feasible_transitions = filter(config.can_apply, named_transitions())
 
             # NOTE: this will raise an exception if feasible_transitions is
             # empty, but since that happening means there is a flaw in the
