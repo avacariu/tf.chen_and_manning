@@ -59,7 +59,7 @@ def is_projective(sentence):
 
 
 def extract_vocab(conll_file):
-    words = {'*root*'}
+    vocab = {'*root*'}
     pos = {'ROOT-POS'}
     rels = {'rroot'}
 
@@ -67,11 +67,24 @@ def extract_vocab(conll_file):
         for line in f:
             entry = line.strip().split()
             if entry:
-                words.add(normalize(entry[1]))
+                word = normalize(entry[1])
+
+                vocab.add(word)
                 pos.add(entry[3].upper())
                 rels.add(entry[7])
 
-    return words, pos, rels
+    vocab2id = defaultdict(return1)    # we want to default to UNK not PAD
+    vocab2id.update({word: i+2 for i, word in enumerate(vocab)})
+    vocab2id["*PAD*"] = 0
+    vocab2id["*UNK*"] = 1
+
+    tags2id = {word: i+1 for i, word in enumerate(pos)}
+    tags2id['*PAD*'] = 0
+
+    relations2id = {word: i+1 for i, word in enumerate(rels)}
+    relations2id['*PAD*'] = 0
+
+    return vocab2id, tags2id, relations2id
 
 
 def read_conll(fh, vocab, tags, relations, only_projective=False):

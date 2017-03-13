@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import argparse
 
-from collections import defaultdict
 import tensorflow as tf
 import utils
 import model
@@ -10,18 +9,10 @@ import model
 
 def train(args):
     with tf.Graph().as_default(), tf.Session() as session:
-        words, pos, rels = utils.extract_vocab(args.train_file)
+        vocab, tags, relations = utils.extract_vocab(args.train_file)
 
-        vocab = defaultdict(utils.return1)    # we want to default to UNK not PAD
-        vocab.update({word: i+2 for i, word in enumerate(words)})
-        vocab["*PAD*"] = 0
-        vocab["*UNK*"] = 1
 
-        tags = {word: i+1 for i, word in enumerate(pos)}
-        tags['*PAD*'] = 0
 
-        relations = {word: i+1 for i, word in enumerate(rels)}
-        relations['*PAD*'] = 0
 
         with open(args.train_file) as f:
             sentences, trees = utils.read_conll(f, vocab, tags, relations, True)
