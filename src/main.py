@@ -39,7 +39,7 @@ def test(args):
         with open(args.test_file) as f:
             sentences, trees = utils.read_conll(f, m.vocab, m.tags, m.relations)
 
-        m.parse(sentences, args.output)
+        m.parse(sentences, args.output, print_progress=args.progress)
 
 
 if __name__ == "__main__":
@@ -64,6 +64,7 @@ if __name__ == "__main__":
     test_parser.add_argument("--model", required=True,
                              help="This should match the --save-to path. There must also be a MODEL.params file available.")
     test_parser.add_argument("--output", required=True)
+    test_parser.add_argument("--progress", action="store_true")
     test_parser.add_argument("--test-file", default="data/UD_English/en-ud-test.conllu")
     test_parser.set_defaults(func=test)
 

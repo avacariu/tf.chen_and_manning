@@ -185,10 +185,12 @@ class Model:
                 train_accuracy = self.sess.run(self.accuracy, feed_dict=feed_dict)
                 print('epoch {0}, training accuracy {1}'.format(epoch, train_accuracy))
 
-    def parse(self, sentences, output):
+    def parse(self, sentences, output, print_progress=False):
         all_arcs = []
         for i, sentence in enumerate(sentences):
-            print("Parsing", i, len(sentences))
+            if print_progress:
+                print("Parsing", i+1, len(sentences))
+
             all_arcs.append(self.parse_sentence(sentence))
 
         with open(output, 'w') as f:
