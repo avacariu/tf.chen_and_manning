@@ -7,12 +7,21 @@ import utils
 import model
 
 
+def create_session(use_xla):
+    config = tf.ConfigProto()
+    jit_level = 0
+    if use_xla:
+        jit_level = tf.OptimizerOptions.ON_1
+
+    config.graph_options.optimizer_options.global_jit_level = jit_level
+
+    return tf.Session(config=config)
+
+
 def train(args):
-    with tf.Graph().as_default(), tf.Session() as session:
+
+    with tf.Graph().as_default(), create_session(args.use_xla) as session:
         vocab, tags, relations = utils.extract_vocab(args.train_file)
-
-
-
 
         with open(args.train_file) as f:
             sentences, trees = utils.read_conll(f, vocab, tags, relations, True)
@@ -33,7 +42,8 @@ def train(args):
 
 
 def test(args):
-    with tf.Graph().as_default(), tf.Session() as session:
+
+    with tf.Graph().as_default(), create_session(args.use_xla) as session:
         m = model.Model.load_from(args.model, session)
 
         with open(args.test_file) as f:
@@ -44,6 +54,9 @@ def test(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--use-xla', action="store_true", default=False)
+
     subparsers = parser.add_subparsers()
 
     train_parser = subparsers.add_parser("train")
