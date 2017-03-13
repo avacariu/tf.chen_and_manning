@@ -18,6 +18,16 @@ def create_session(use_xla):
     return tf.Session(config=config)
 
 
+def device_placement(args):
+    placements = {
+        "any": None,
+        "gpu": "/gpu:0",
+        "cpu": "/cpu:0",
+    }
+
+    return placements.get(args.device_placement, None)
+
+
 def train(args):
 
     with tf.Graph().as_default(), create_session(args.use_xla) as session:
@@ -26,13 +36,15 @@ def train(args):
         with open(args.train_file) as f:
             sentences, trees = utils.read_conll(f, vocab, tags, relations, True)
 
-        m = model.Model(args.embedding_size, args.hidden_layer_size, vocab,
-                        tags, relations, session,
-                        activation=args.activation,
-                        l2_weight=args.l2,
-                        learning_rate=args.learning_rate)
+        with tf.device(device_placement(args)):
+            m = model.Model(args.embedding_size, args.hidden_layer_size, vocab,
+                            tags, relations, session,
+                            activation=args.activation,
+                            l2_weight=args.l2,
+                            learning_rate=args.learning_rate)
 
-        init = tf.global_variables_initializer()
+            init = tf.global_variables_initializer()
+
         session.run(init)
 
         m.train(trees, batch_size=args.batch_size, epochs=args.epochs,
@@ -44,7 +56,8 @@ def train(args):
 def test(args):
 
     with tf.Graph().as_default(), create_session(args.use_xla) as session:
-        m = model.Model.load_from(args.model, session)
+        with tf.device(device_placement(args)):
+            m = model.Model.load_from(args.model, session)
 
         with open(args.test_file) as f:
             sentences, trees = utils.read_conll(f, m.vocab, m.tags, m.relations)
@@ -56,6 +69,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--use-xla', action="store_true", default=False)
+    parser.add_argument("--device-placement", default="cpu", choices=["any", "gpu", "cpu"])
 
     subparsers = parser.add_subparsers()
 
